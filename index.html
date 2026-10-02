@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Octopus Energy Usage Downloader</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #31103f 100%);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-slate-100 font-sans p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+
+        <!-- Header -->
+        <header class="glass-card rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-pink-600 p-3 rounded-xl shadow-lg shadow-pink-500/30">
+                    <i data-lucide="zap" class="w-8 h-8 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-purple-400">
+                        Octopus Energy Data Downloader
+                    </h1>
+                    <p class="text-slate-400 text-sm">Download your Electricity & Gas meter readings to CSV</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="clearStorageBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg transition border border-slate-700 flex items-center gap-1">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear Saved Credentials
+                </button>
+            </div>
+        </header>
+
+        <!-- Credentials Form Card -->
+        <section class="glass-card rounded-2xl p-6 shadow-xl space-y-4">
+            <h2 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                <i data-lucide="key" class="w-5 h-5 text-pink-400"></i> Account Credentials
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">API Key *</label>
+                    <input type="password" id="apiKey" placeholder="sk_live_..." class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Account Number (Optional for Auto-Discovery)</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="accountNumber" placeholder="A-12345678" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500 transition">
+                        <button id="autoDiscoverBtn" type="button" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-1 whitespace-nowrap shadow-lg shadow-purple-600/20">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i> Auto-Detect
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Meters Section -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-slate-800">
+                <!-- Electricity -->
+                <div class="space-y-3 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+                    <h3 class="text-sm font-semibold text-cyan-400 flex items-center gap-1.5">
+                        <i data-lucide="zap" class="w-4 h-4"></i> Electricity Meter
+                    </h3>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">MPAN</label>
+                        <input type="text" id="mpan" placeholder="1234567890123" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-400 transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Meter Serial Number</label>
+                        <input type="text" id="elecSerial" placeholder="21M1234567" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-400 transition">
+                    </div>
+                </div>
+
+                <!-- Gas -->
+                <div class="space-y-3 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+                    <h3 class="text-sm font-semibold text-rose-400 flex items-center gap-1.5">
+                        <i data-lucide="flame" class="w-4 h-4"></i> Gas Meter
+                    </h3>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">MPRN</label>
+                        <input type="text" id="mprn" placeholder="9876543210" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-rose-400 transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Meter Serial Number</label>
+                        <input type="text" id="gasSerial" placeholder="G4P1234567" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-rose-400 transition">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Options & Date Selection -->
+        <section class="glass-card rounded-2xl p-6 shadow-xl space-y-4">
+            <h2 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                <i data-lucide="calendar" class="w-5 h-5 text-pink-400"></i> Date Range & Granularity
+            </h2>
+
+            <!-- Quick Presets -->
+            <div class="flex flex-wrap gap-2">
+                <button class="preset-btn bg-slate-800 hover:bg-slate-700 text-xs px-3 py-2 rounded-lg border border-slate-700 transition" data-days="7">Last 7 Days</button>
+                <button class="preset-btn bg-pink-600/30 border-pink-500/50 text-pink-300 text-xs px-3 py-2 rounded-lg border transition" data-days="30">Last 30 Days</button>
+                <button class="preset-btn bg-slate-800 hover:bg-slate-700 text-xs px-3 py-2 rounded-lg border border-slate-700 transition" data-days="90">Last 90 Days</button>
+                <button class="preset-btn bg-slate-800 hover:bg-slate-700 text-xs px-3 py-2 rounded-lg border border-slate-700 transition" data-days="365">Last 365 Days</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">From Date</label>
+                    <input type="date" id="dateFrom" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-pink-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">To Date</label>
+                    <input type="date" id="dateTo" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-pink-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Granularity</label>
+                    <select id="groupBy" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-pink-500 transition">
+                        <option value="">Half-Hourly (Raw 30-min)</option>
+                        <option value="hour">Hourly</option>
+                        <option value="day">Daily</option>
+                        <option value="week">Weekly</option>
+                        <option value="month">Monthly</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button id="fetchDataBtn" class="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-pink-500/25 transition transform active:scale-[0.99] flex items-center justify-center gap-2 text-sm">
+                    <i data-lucide="download-cloud" class="w-5 h-5"></i> Fetch Usage Data & Generate CSVs
+                </button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div id="progressContainer" class="hidden space-y-1">
+                <div class="flex justify-between text-xs text-slate-400">
+                    <span id="progressStatus">Downloading data from Octopus API...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden">
+                    <div id="progressBar" class="bg-pink-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary & Downloads -->
+        <section id="resultsSection" class="hidden glass-card rounded-2xl p-6 shadow-xl space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-100">Usage Results</h2>
+                    <p class="text-slate-400 text-xs" id="resultsSubhead"></p>
+                </div>
+
+                <!-- Export CSV Buttons -->
+                <div class="flex flex-wrap gap-2">
+                    <button id="downloadElecCsv" class="hidden bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-lg shadow-cyan-600/20">
+                        <i data-lucide="download" class="w-4 h-4"></i> Download Electricity CSV
+                    </button>
+                    <button id="downloadGasCsv" class="hidden bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-lg shadow-rose-600/20">
+                        <i data-lucide="download" class="w-4 h-4"></i> Download Gas CSV
+                    </button>
+                    <button id="downloadCombinedCsv" class="hidden bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-lg shadow-purple-600/20">
+                        <i data-lucide="download" class="w-4 h-4"></i> Download Combined CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Metric Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 text-xs font-medium">Electricity Total</span>
+                    <div class="text-2xl font-bold text-cyan-400 mt-1" id="statElecTotal">0.00 kWh</div>
+                    <span class="text-[10px] text-slate-500" id="statElecReadings">0 readings</span>
+                </div>
+                <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 text-xs font-medium">Gas Total</span>
+                    <div class="text-2xl font-bold text-rose-400 mt-1" id="statGasTotal">0.00 m³</div>
+                    <span class="text-[10px] text-slate-500" id="statGasReadings">0 readings</span>
+                </div>
+                <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 text-xs font-medium">Avg Daily Electricity</span>
+                    <div class="text-2xl font-bold text-purple-400 mt-1" id="statElecAvg">0.00 kWh/day</div>
+                </div>
+                <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 text-xs font-medium">Peak Single Interval</span>
+                    <div class="text-2xl font-bold text-pink-400 mt-1" id="statPeakUsage">0.00 kWh</div>
+                </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                <canvas id="usageChart" class="w-full max-h-[400px]"></canvas>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        lucide.createIcons();
+
+        // Local Storage Credentials Persistence
+        const fields = ['apiKey', 'accountNumber', 'mpan', 'elecSerial', 'mprn', 'gasSerial'];
+        fields.forEach(f => {
+            const val = localStorage.getItem('octopus_' + f);
+            if (val) document.getElementById(f).value = val;
+            document.getElementById(f).addEventListener('input', () => {
+                localStorage.setItem('octopus_' + f, document.getElementById(f).value.trim());
+            });
+        });
+
+        document.getElementById('clearStorageBtn').addEventListener('click', () => {
+            fields.forEach(f => {
+                localStorage.removeItem('octopus_' + f);
+                document.getElementById(f).value = '';
+            });
+            alert('Credentials cleared.');
+        });
+
+        // Initialize Dates
+        const today = new Date();
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+
+        document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+        document.getElementById('dateFrom').value = thirtyDaysAgo.toISOString().split('T')[0];
+
+        // Preset Date Buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const days = parseInt(btn.getAttribute('data-days'));
+                const end = new Date();
+                const start = new Date();
+                start.setDate(end.getDate() - days);
+                document.getElementById('dateTo').value = end.toISOString().split('T')[0];
+                document.getElementById('dateFrom').value = start.toISOString().split('T')[0];
+
+                document.querySelectorAll('.preset-btn').forEach(b => {
+                    b.className = 'preset-btn bg-slate-800 hover:bg-slate-700 text-xs px-3 py-2 rounded-lg border border-slate-700 transition';
+                });
+                btn.className = 'preset-btn bg-pink-600/30 border-pink-500/50 text-pink-300 text-xs px-3 py-2 rounded-lg border transition';
+            });
+        });
+
+        // Auto-Discover Details
+        document.getElementById('autoDiscoverBtn').addEventListener('click', async () => {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const account = document.getElementById('accountNumber').value.trim();
+
+            if (!apiKey || !account) {
+                alert('Please enter both your API Key and Account Number to auto-detect.');
+                return;
+            }
+
+            try {
+                const authHeader = 'Basic ' + btoa(apiKey + ':');
+                const resp = await fetch(`https://api.octopus.energy/v1/accounts/${account}/`, {
+                    headers: { 'Authorization': authHeader }
+                });
+
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+                const data = await resp.json();
+
+                let foundElec = false, foundGas = false;
+
+                if (data.properties) {
+                    data.properties.forEach(p => {
+                        if (p.electricity_meter_points && p.electricity_meter_points.length > 0) {
+                            const ep = p.electricity_meter_points[0];
+                            document.getElementById('mpan').value = ep.mpan || '';
+                            if (ep.meters && ep.meters.length > 0) {
+                                document.getElementById('elecSerial').value = ep.meters[0].serial_number || '';
+                            }
+                            foundElec = true;
+                        }
+                        if (p.gas_meter_points && p.gas_meter_points.length > 0) {
+                            const gp = p.gas_meter_points[0];
+                            document.getElementById('mprn').value = gp.mprn || '';
+                            if (gp.meters && gp.meters.length > 0) {
+                                document.getElementById('gasSerial').value = gp.meters[0].serial_number || '';
+                            }
+                            foundGas = true;
+                        }
+                    });
+                }
+
+                fields.forEach(f => localStorage.setItem('octopus_' + f, document.getElementById(f).value.trim()));
+                alert(`Auto-discovery successful! Electricity: ${foundElec ? 'Found' : 'Not found'}, Gas: ${foundGas ? 'Found' : 'Not found'}`);
+            } catch (err) {
+                alert('Auto-discovery failed: ' + err.message);
+            }
+        });
+
+        // State & Chart Globals
+        let elecData = [], gasData = [];
+        let usageChartInstance = null;
+
+        // Fetch Function with Pagination Loop
+        async function fetchFuelConsumption(fuel, pointId, serial, apiKey, periodFrom, periodTo, groupBy) {
+            const endpoint = fuel === 'electricity' ? 'electricity-meter-points' : 'gas-meter-points';
+            let url = `https://api.octopus.energy/v1/${endpoint}/${pointId}/meters/${serial}/consumption/?page_size=25000&order_by=period`;
+            
+            if (periodFrom) url += `&period_from=${encodeURIComponent(periodFrom + 'T00:00:00Z')}`;
+            if (periodTo) url += `&period_to=${encodeURIComponent(periodTo + 'T23:59:59Z')}`;
+            if (groupBy) url += `&group_by=${encodeURIComponent(groupBy)}`;
+
+            const authHeader = 'Basic ' + btoa(apiKey + ':');
+            let results = [];
+            let currentUrl = url;
+
+            while (currentUrl) {
+                const resp = await fetch(currentUrl, { headers: { 'Authorization': authHeader } });
+                if (!resp.ok) {
+                    throw new Error(`Failed to fetch ${fuel} data (HTTP ${resp.status})`);
+                }
+                const json = await resp.json();
+                if (json.results) results = results.concat(json.results);
+                currentUrl = json.next;
+            }
+
+            return results.sort((a, b) => new Date(a.interval_start) - new Date(b.interval_start));
+        }
+
+        // Fetch Button Click Handler
+        document.getElementById('fetchDataBtn').addEventListener('click', async () => {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const mpan = document.getElementById('mpan').value.trim();
+            const elecSerial = document.getElementById('elecSerial').value.trim();
+            const mprn = document.getElementById('mprn').value.trim();
+            const gasSerial = document.getElementById('gasSerial').value.trim();
+
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const groupBy = document.getElementById('groupBy').value;
+
+            if (!apiKey) {
+                alert('Please enter your Octopus Energy API Key.');
+                return;
+            }
+
+            if ((!mpan || !elecSerial) && (!mprn || !gasSerial)) {
+                alert('Please enter at least one meter setup (Electricity MPAN+Serial OR Gas MPRN+Serial).');
+                return;
+            }
+
+            // Progress UI
+            const progContainer = document.getElementById('progressContainer');
+            const progBar = document.getElementById('progressBar');
+            const progStatus = document.getElementById('progressStatus');
+            const progPercent = document.getElementById('progressPercent');
+
+            progContainer.classList.remove('hidden');
+            progBar.style.width = '20%';
+            progStatus.textContent = 'Initializing request...';
+
+            elecData = [];
+            gasData = [];
+
+            try {
+                if (mpan && elecSerial) {
+                    progStatus.textContent = 'Downloading Electricity consumption data...';
+                    progBar.style.width = '40%';
+                    elecData = await fetchFuelConsumption('electricity', mpan, elecSerial, apiKey, dateFrom, dateTo, groupBy);
+                }
+
+                if (mprn && gasSerial) {
+                    progStatus.textContent = 'Downloading Gas consumption data...';
+                    progBar.style.width = '80%';
+                    gasData = await fetchFuelConsumption('gas', mprn, gasSerial, apiKey, dateFrom, dateTo, groupBy);
+                }
+
+                progBar.style.width = '100%';
+                progStatus.textContent = 'Complete!';
+                setTimeout(() => progContainer.classList.add('hidden'), 1000);
+
+                renderResults(dateFrom, dateTo);
+
+            } catch (err) {
+                alert('Error fetching data: ' + err.message);
+                progContainer.classList.add('hidden');
+            }
+        });
+
+        // Render Results Dashboard
+        function renderResults(dateFrom, dateTo) {
+            document.getElementById('resultsSection').classList.remove('hidden');
+            document.getElementById('resultsSubhead').textContent = `Period: ${dateFrom} to ${dateTo}`;
+
+            const elecTotal = elecData.reduce((acc, curr) => acc + (curr.consumption || 0), 0);
+            const gasTotal = gasData.reduce((acc, curr) => acc + (curr.consumption || 0), 0);
+
+            document.getElementById('statElecTotal').textContent = `${elecTotal.toFixed(2)} kWh`;
+            document.getElementById('statElecReadings').textContent = `${elecData.length.toLocaleString()} readings`;
+
+            document.getElementById('statGasTotal').textContent = `${gasTotal.toFixed(2)} m³`;
+            document.getElementById('statGasReadings').textContent = `${gasData.length.toLocaleString()} readings`;
+
+            // Calculate Avg Daily
+            const d1 = new Date(dateFrom), d2 = new Date(dateTo);
+            const diffDays = Math.max(1, Math.round((d2 - d1) / (1000 * 60 * 60 * 24)));
+            document.getElementById('statElecAvg').textContent = `${(elecTotal / diffDays).toFixed(2)} kWh/day`;
+
+            // Peak Single Reading
+            const maxElec = elecData.length > 0 ? Math.max(...elecData.map(d => d.consumption || 0)) : 0;
+            document.getElementById('statPeakUsage').textContent = `${maxElec.toFixed(2)} kWh`;
+
+            // Download Buttons
+            const btnElec = document.getElementById('downloadElecCsv');
+            const btnGas = document.getElementById('downloadGasCsv');
+            const btnCombined = document.getElementById('downloadCombinedCsv');
+
+            if (elecData.length > 0) btnElec.classList.remove('hidden'); else btnElec.classList.add('hidden');
+            if (gasData.length > 0) btnGas.classList.remove('hidden'); else btnGas.classList.add('hidden');
+            if (elecData.length > 0 && gasData.length > 0) btnCombined.classList.remove('hidden'); else btnCombined.classList.add('hidden');
+
+            renderChart();
+        }
+
+        // Render Chart.js
+        function renderChart() {
+            const ctx = document.getElementById('usageChart').getContext('2d');
+            if (usageChartInstance) usageChartInstance.destroy();
+
+            const datasets = [];
+
+            if (elecData.length > 0) {
+                datasets.push({
+                    label: 'Electricity (kWh)',
+                    data: elecData.map(d => ({ x: d.interval_start, y: d.consumption })),
+                    borderColor: '#22d3ee',
+                    backgroundColor: 'rgba(34, 211, 238, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.2
+                });
+            }
+
+            if (gasData.length > 0) {
+                datasets.push({
+                    label: 'Gas (m³)',
+                    data: gasData.map(d => ({ x: d.interval_start, y: d.consumption })),
+                    borderColor: '#fb7185',
+                    backgroundColor: 'rgba(251, 113, 133, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.2
+                });
+            }
+
+            usageChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#cbd5e1' } }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8', maxTicksLimit: 12 },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        },
+                        y: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // CSV Export Helpers
+        function exportToCSV(filename, rows) {
+            if (!rows || !rows.length) return;
+            const headers = Object.keys(rows[0]);
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(row => headers.map(h => JSON.stringify(row[h] ?? '')).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+
+        document.getElementById('downloadElecCsv').addEventListener('click', () => {
+            const formatted = elecData.map(d => ({
+                Fuel: 'Electricity',
+                Interval_Start: d.interval_start,
+                Interval_End: d.interval_end,
+                Consumption_kWh: d.consumption
+            }));
+            exportToCSV(`octopus_electricity_usage_${new Date().toISOString().split('T')[0]}.csv`, formatted);
+        });
+
+        document.getElementById('downloadGasCsv').addEventListener('click', () => {
+            const formatted = gasData.map(d => ({
+                Fuel: 'Gas',
+                Interval_Start: d.interval_start,
+                Interval_End: d.interval_end,
+                Consumption_m3: d.consumption
+            }));
+            exportToCSV(`octopus_gas_usage_${new Date().toISOString().split('T')[0]}.csv`, formatted);
+        });
+
+        document.getElementById('downloadCombinedCsv').addEventListener('click', () => {
+            const map = new Map();
+            elecData.forEach(d => {
+                map.set(d.interval_start, {
+                    Interval_Start: d.interval_start,
+                    Interval_End: d.interval_end,
+                    Electricity_kWh: d.consumption,
+                    Gas_m3: 0
+                });
+            });
+            gasData.forEach(d => {
+                if (map.has(d.interval_start)) {
+                    map.get(d.interval_start).Gas_m3 = d.consumption;
+                } else {
+                    map.set(d.interval_start, {
+                        Interval_Start: d.interval_start,
+                        Interval_End: d.interval_end,
+                        Electricity_kWh: 0,
+                        Gas_m3: d.consumption
+                    });
+                }
+            });
+            const combined = Array.from(map.values()).sort((a, b) => new Date(a.Interval_Start) - new Date(b.Interval_Start));
+            exportToCSV(`octopus_combined_energy_${new Date().toISOString().split('T')[0]}.csv`, combined);
+        });
+    </script>
+</body>
+</html>

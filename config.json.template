@@ -1,0 +1,8 @@
+{
+    "api_key": "YOUR_OCTOPUS_API_KEY",
+    "account_number": "A-12345678",
+    "mpan": "YOUR_ELECTRICITY_MPAN",
+    "elec_serial": "YOUR_ELECTRICITY_METER_SERIAL",
+    "mprn": "YOUR_GAS_MPRN",
+    "gas_serial": "YOUR_GAS_METER_SERIAL"
+}
